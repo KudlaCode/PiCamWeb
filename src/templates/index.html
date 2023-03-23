@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Raspberry Pi Camera Stream</title>
+  </head>
+  <body>
+    <h1>Raspberry Pi Camera Stream</h1>
+    <img id="video_feed" src="{{ url_for('video_feed') }}">
+    <br>
+    <button onclick="move_forward()">Move Forward</button>
+    <button onclick="move_backward()">Move Backward</button>
+    <script>
+      function move_forward() {
+        fetch('/move_forward')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+      function move_backward() {
+        fetch('/move_backward')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+    </script>
+  </body>
+</html>
