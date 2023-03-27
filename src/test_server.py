@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
 import RPi.GPIO as GPIO
 import time
 #import cv2
@@ -26,13 +26,15 @@ class StreamingOutput(object):
 app = Flask(__name__)
 
 # Set up GPIO pin
-pwm_input = 29
-input1 = 31
-input2 = 33
+pwm_input = 33
+input1 = 35
+input2 = 37
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(pwm_input, GPIO.OUT) # PWM Speed control
 GPIO.setup(input1, GPIO.OUT) # Input1
 GPIO.setup(input2, GPIO.OUT) # Input2
+global move_duration
+move_duration = 5
 
 # Initialize camera
 #camera = cv2.VideoCapture(0)
@@ -64,6 +66,31 @@ def video_feed():
     return Response(gen(camera),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/set_move_duration', methods=['POST'])
+def set_move_duration():
+    # Get the value from the text field
+    #value = int(request.form['value'])
+    formValue = request.form.get('value') 
+    #formValue = request.form['value']
+    value = None
+    try:
+        value = int(formValue)
+    except:
+        print("Error converting to int")
+
+    if type(value) == int:
+        move_duration = value
+        print('Move duration set to ' + str(move_duration))
+    else:
+        print('Invalid value for move duration ' + str(request.form['value']))
+        print('Value was ' + str(value))
+        print('Value type was ' + str(type(value)))
+    
+
+    return render_template('index.html')
+
+
+
 # Route to control GPIO pin
 @app.route('/gpio')
 def gpio():
@@ -74,21 +101,54 @@ def gpio():
 
 @app.route('/move_forward')
 def move_forward_route():
-    secs = 1
-    move_forward(1)
+    secs = move_duration
+    move_forward(secs)
+    response = 'Moved forward for ' + str(secs) + ' seconds'
+    print(response)
+    return response
+
+@app.route('/move_forward3')
+def move_forward_route3():
+    secs = 3
+    move_forward(secs)
     response = 'Moved forward for ' + str(secs) + ' seconds'
     print(response)
     return response
 
 @app.route('/move_backward')
 def move_backward_route():
-    secs = 1
-    move_backward(1)
+    secs = move_duration
+    move_backward(secs)
     response = 'Moved backward for ' + str(secs) + ' seconds'
     print(response)
     return response
 
+@app.route('/stop')
+def stop_route():
+    GPIO.output(input1, GPIO.LOW)
+    GPIO.output(input2, GPIO.LOW)
+    GPIO.output(pwm_input, GPIO.LOW)
+    
+    response = 'Stopped'
+    print(response)
+    return response
+
+@app.route('/fire')
+def fire():
+    print('Firing...')
+    secs = 5
+    move_backward(4)
+    move_forward(3)
+    response = 'Firing complete'
+    print(response)
+    return response
+
 # move motor forward
+def move_forward():
+    GPIO.output(input1, GPIO.HIGH)
+    GPIO.output(input2, GPIO.LOW)
+    GPIO.output(pwm_input, GPIO.HIGH)
+
 def move_forward(seconds):
     GPIO.output(input1, GPIO.HIGH)
     GPIO.output(input2, GPIO.LOW)
@@ -99,6 +159,11 @@ def move_forward(seconds):
     GPIO.output(pwm_input, GPIO.LOW)
 
 # move motor forward
+def move_backward():
+    GPIO.output(input1, GPIO.LOW)
+    GPIO.output(input2, GPIO.HIGH)
+    GPIO.output(pwm_input, GPIO.HIGH)
+
 def move_backward(seconds):
     GPIO.output(input1, GPIO.LOW)
     GPIO.output(input2, GPIO.HIGH)
