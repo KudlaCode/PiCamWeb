@@ -29,17 +29,17 @@ app = Flask(__name__)
 pwm_input = 33
 input1 = 35
 input2 = 37
+input3 = 31
+input4 = 33
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(pwm_input, GPIO.OUT) # PWM Speed control
 GPIO.setup(input1, GPIO.OUT) # Input1
 GPIO.setup(input2, GPIO.OUT) # Input2
+GPIO.setup(input3, GPIO.OUT) # Input1
+GPIO.setup(input4, GPIO.OUT) # Input2
 global move_duration
 move_duration = 5
 
-# Initialize camera
-#camera = cv2.VideoCapture(0)
-#camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-#camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 # Route to display camera stream
 @app.route('/')
@@ -52,11 +52,6 @@ def gen(camera):
             output.condition.wait()
             frame = output.frame
        
-        #success, frame = camera.read()
-        #if not success:
-        #    break
-        #ret, jpeg = cv2.imencode('.jpg', frame)
-        #frame = jpeg.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
@@ -101,35 +96,32 @@ def gpio():
 
 @app.route('/move_forward')
 def move_forward_route():
-    secs = move_duration
-    move_forward(secs)
-    response = 'Moved forward for ' + str(secs) + ' seconds'
+    move_forward(input1, input2)
+    response = 'Moving motor1 forward'
     print(response)
     return response
 
 @app.route('/move_forward3')
 def move_forward_route3():
     secs = 3
-    move_forward(secs)
+    move_forward(input1, input2, secs)
     response = 'Moved forward for ' + str(secs) + ' seconds'
     print(response)
     return response
 
 @app.route('/move_backward')
 def move_backward_route():
-    secs = move_duration
-    move_backward(secs)
-    response = 'Moved backward for ' + str(secs) + ' seconds'
+
+    move_backward(input1, input2)
+    response = 'Moving motor1 backward'
     print(response)
     return response
 
 @app.route('/stop')
 def stop_route():
-    GPIO.output(input1, GPIO.LOW)
-    GPIO.output(input2, GPIO.LOW)
-    GPIO.output(pwm_input, GPIO.LOW)
+    stop(input1, input2)
     
-    response = 'Stopped'
+    response = 'Stopped motor1'
     print(response)
     return response
 
@@ -137,9 +129,58 @@ def stop_route():
 def fire():
     print('Firing...')
     secs = 5
-    move_backward(4)
-    move_forward(3)
+    move_backward(input1, input2, 4)
+    move_forward(input1, input2, 3)
     response = 'Firing complete'
+    print(response)
+    return response
+
+@app.route('/motor2_forward')
+def motor2_forward():
+    
+    move_forward(input3, input4, 0.2)
+    response = 'Moving motor2 forward'
+    print(response)
+    return response
+
+@app.route('/motor2_backward')
+def motor2_backward():
+    
+    move_backward(input3, input4)
+    response = 'Moving motor2 backward'
+    print(response)
+    return response
+
+@app.route('/motor2_stop')
+def motor2_stop():
+    
+    stop(input3, input4)
+    response = 'Moving motor2 stopped'
+    print(response)
+    return response
+
+@app.route('/motor2_trigger')
+def motor2_trigger():
+    
+    move_backward(input3, input4, 2)
+
+    move_forward(input3, input4, 1.0)
+
+    response = 'Motor2 trigger called'
+    print(response)
+    return response
+
+@app.route('/fire_sequence')
+def fire_sequence():
+    print('starting fire sequence...')
+    #turn gun on
+    motor2_trigger()
+    time.sleep(0.5)
+    fire()
+    #turn gun off
+    motor2_trigger()
+
+    response = 'Full fire sequence completed'
     print(response)
     return response
 
@@ -158,6 +199,20 @@ def move_forward(seconds):
     GPIO.output(input2, GPIO.LOW)
     GPIO.output(pwm_input, GPIO.LOW)
 
+
+def move_forward(firstInput, secondInput, seconds = -1):
+    GPIO.output(firstInput, GPIO.HIGH)
+    GPIO.output(secondInput, GPIO.LOW)
+    if seconds > 0:
+        time.sleep(seconds)
+        stop(firstInput, secondInput)
+
+
+
+def stop(firstInput, secondInput):
+    GPIO.output(firstInput, GPIO.LOW)
+    GPIO.output(secondInput, GPIO.LOW)
+
 # move motor forward
 def move_backward():
     GPIO.output(input1, GPIO.LOW)
@@ -172,6 +227,13 @@ def move_backward(seconds):
     GPIO.output(input1, GPIO.LOW)
     GPIO.output(input2, GPIO.LOW)
     GPIO.output(pwm_input, GPIO.LOW)
+
+def move_backward(firstInput, secondInput, seconds = -1):
+    GPIO.output(firstInput, GPIO.LOW)
+    GPIO.output(secondInput, GPIO.HIGH)
+    if seconds > 0:
+        time.sleep(seconds)
+        stop(firstInput, secondInput)
 
 if __name__ == '__main__':
     with picamera.PiCamera(resolution='640x480', framerate=24) as camera:

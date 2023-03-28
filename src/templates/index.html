@@ -11,7 +11,12 @@
     <button onclick="move_forward3()">Move Forward 3 sec</button>
     <button onclick="move_backward()">Move Backward</button>
     <button onclick="stop()">Stop</button>
-    <button onclick="fire()">FIRE</button>
+    <button onclick="fire()">Fire Gun</button>
+    <button onclick="motor2_forward()">Motor2 Forward</button>
+    <button onclick="motor2_backward()">Motor2 Backward</button>
+    <button onclick="motor2_stop()">Motor2 Stop</button>
+    <button onclick="motor2_trigger()">Turn Gun On/Off</button>
+    <button onclick="fire_sequence()">FIRE</button>
     <form action="{{ url_for('set_move_duration') }}" method="POST">
       <label for="value">Move duration value in seconds:</label>
       <input type="text" id="value" name="value" />
@@ -44,6 +49,36 @@
       }
       function fire() {
         fetch('/fire')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+      function motor2_forward() {
+        fetch('/motor2_forward')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+      function motor2_backward() {
+        fetch('/motor2_backward')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+      function motor2_stop() {
+        fetch('/motor2_stop')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+      function motor2_trigger() {
+        fetch('/motor2_trigger')
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error(error))
+      }
+      function fire_sequence() {
+        fetch('/fire_sequence')
           .then(response => response.text())
           .then(data => console.log(data))
           .catch(error => console.error(error))
