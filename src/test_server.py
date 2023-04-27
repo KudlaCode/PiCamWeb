@@ -1,10 +1,11 @@
-from flask import Flask, render_template, Response, request
+from flask import Flask, render_template, Response, request, jsonify
 import RPi.GPIO as GPIO
 import time
 #import cv2
 import picamera
 import io
 from threading import Condition
+import random
 
 class StreamingOutput(object):
     def __init__(self):
@@ -39,6 +40,7 @@ GPIO.setup(input3, GPIO.OUT) # Input1
 GPIO.setup(input4, GPIO.OUT) # Input2
 global move_duration
 move_duration = 5
+logging_text = ''
 
 
 # Route to display camera stream
@@ -98,7 +100,7 @@ def gpio():
 def move_forward_route():
     move_forward(input1, input2)
     response = 'Moving motor1 forward'
-    print(response)
+    log(response)
     return response
 
 @app.route('/move_forward3')
@@ -106,7 +108,7 @@ def move_forward_route3():
     secs = 3
     move_forward(input1, input2, secs)
     response = 'Moved forward for ' + str(secs) + ' seconds'
-    print(response)
+    log(response)
     return response
 
 @app.route('/move_backward')
@@ -114,7 +116,7 @@ def move_backward_route():
 
     move_backward(input1, input2)
     response = 'Moving motor1 backward'
-    print(response)
+    log(response)
     return response
 
 @app.route('/stop')
@@ -122,17 +124,17 @@ def stop_route():
     stop(input1, input2)
     
     response = 'Stopped motor1'
-    print(response)
+    log(response)
     return response
 
 @app.route('/fire')
 def fire():
-    print('Firing...')
+    log('Firing...')
     secs = 5
     move_backward(input1, input2, 4)
     move_forward(input1, input2, 3)
     response = 'Firing complete'
-    print(response)
+    log(response)
     return response
 
 @app.route('/motor2_forward')
@@ -140,7 +142,7 @@ def motor2_forward():
     
     move_forward(input3, input4, 0.2)
     response = 'Moving motor2 forward'
-    print(response)
+    log(response)
     return response
 
 @app.route('/motor2_backward')
@@ -148,7 +150,7 @@ def motor2_backward():
     
     move_backward(input3, input4)
     response = 'Moving motor2 backward'
-    print(response)
+    log(response)
     return response
 
 @app.route('/motor2_stop')
@@ -156,7 +158,7 @@ def motor2_stop():
     
     stop(input3, input4)
     response = 'Moving motor2 stopped'
-    print(response)
+    log(response)
     return response
 
 @app.route('/motor2_trigger')
@@ -167,12 +169,12 @@ def motor2_trigger():
     move_forward(input3, input4, 1.0)
 
     response = 'Motor2 trigger called'
-    print(response)
+    log(response)
     return response
 
 @app.route('/fire_sequence')
 def fire_sequence():
-    print('starting fire sequence...')
+    log('starting fire sequence...')
     #turn gun on
     motor2_trigger()
     time.sleep(0.5)
@@ -181,8 +183,23 @@ def fire_sequence():
     motor2_trigger()
 
     response = 'Full fire sequence completed'
-    print(response)
+    log(response)
     return response
+
+# Define a route for the AJAX call
+@app.route('/get_data')
+def get_data():
+    # Generate new data
+    global logging_text
+    data = logging_text
+
+    # Return data in JSON format
+    return jsonify({'data': data})
+
+def log(line):
+    print(line)
+    global logging_text
+    logging_text += line + "\n"
 
 # move motor forward
 def move_forward():

@@ -1,27 +1,31 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Raspberry Pi Camera Stream</title>
+  <title>Raspberry Pi Camera Stream</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
   </head>
   <body>
     <h1>Raspberry Pi Camera Stream</h1>
     <img id="video_feed" src="{{ url_for('video_feed') }}">
-    <br>
-    <button onclick="move_forward()">Move Forward</button>
-    <button onclick="move_forward3()">Move Forward 3 sec</button>
-    <button onclick="move_backward()">Move Backward</button>
-    <button onclick="stop()">Stop</button>
-    <button onclick="fire()">Fire Gun</button>
-    <button onclick="motor2_forward()">Motor2 Forward</button>
-    <button onclick="motor2_backward()">Motor2 Backward</button>
-    <button onclick="motor2_stop()">Motor2 Stop</button>
-    <button onclick="motor2_trigger()">Turn Gun On/Off</button>
-    <button onclick="fire_sequence()">FIRE</button>
-    <form action="{{ url_for('set_move_duration') }}" method="POST">
-      <label for="value">Move duration value in seconds:</label>
-      <input type="text" id="value" name="value" />
-      <input type="submit" value="Set Duration" />
-    </form>
+    <div id="button_container">
+      <button class="move_button" onclick="move_forward()">Move Forward</button>
+      <button class="move_button" onclick="move_forward3()">Move Forward 3 sec</button>
+      <button class="move_button" onclick="move_backward()">Move Backward</button>
+      <button class="move_button" onclick="stop()">Stop</button>
+      <button class="fire_button" onclick="fire()">Fire Gun</button>
+      <button class="motor_button" onclick="motor2_forward()">Motor2 Forward</button>
+      <button class="motor_button" onclick="motor2_backward()">Motor2 Backward</button>
+      <button class="motor_button" onclick="motor2_stop()">Motor2 Stop</button>
+      <button class="motor_button" onclick="motor2_trigger()">Turn Gun On/Off</button>
+      <button class="fire_sequence_button" onclick="fire_sequence()">FIRE</button>
+      <textarea id="log-textarea" rows="10" cols="50" clear="left"></textarea>
+      
+    </div>
+    <div id="text-box">
+      
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script>
       function move_forward() {
         fetch('/move_forward')
@@ -83,6 +87,23 @@
           .then(data => console.log(data))
           .catch(error => console.error(error))
       }
+      function updateText() {
+			$.ajax({
+				url: '/get_data',
+				type: 'GET',
+				dataType: 'json',
+				success: function(response) {
+					$('#log-textarea').text(response.data);
+				},
+				error: function(error) {
+					console.log(error);
+				}
+			});
+		}
+
+		$(document).ready(function() {
+			setInterval(updateText, 1000);
+		});
     </script>
   </body>
 </html>
