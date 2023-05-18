@@ -1,11 +1,53 @@
 from flask import Flask, render_template, Response, request, jsonify
 import RPi.GPIO as GPIO
 import time
-#import cv2
+import cv2
+#from cv2 import cv
 import picamera
+from picamera.array import PiRGBArray
 import io
 from threading import Condition
 import random
+import numpy as np
+
+#This is to pull the information about what each object is called
+classNames = []
+classFile = "./../files/coco.names"
+with open(classFile,"rt") as f:
+    classNames = f.read().rstrip("\n").split("\n")
+
+#This is to pull the information about what each object should look like
+configPath = "./../files/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt"
+weightsPath = "./../files/frozen_inference_graph.pb"
+
+#This is some set up values to get good results
+net = cv2.dnn_DetectionModel(weightsPath,configPath)
+net.setInputSize(320,320)
+net.setInputScale(1.0/ 127.5)
+net.setInputMean((127.5, 127.5, 127.5))
+net.setInputSwapRB(True)
+
+#This is to set up what the drawn box size/colour is and the font/size/colour of the name tag and confidence label   
+def getObjects(img, thres, nms, draw=True, objects=[]):
+    classIds, confs, bbox = net.detect(img,confThreshold=thres,nmsThreshold=nms)
+#Below has been commented out, if you want to print each sighting of an object to the console you can uncomment below     
+#print(classIds,bbox)
+    if len(objects) == 0: objects = classNames
+    objectInfo =[]
+    if len(classIds) != 0:
+        for classId, confidence,box in zip(classIds.flatten(),confs.flatten(),bbox):
+            className = classNames[classId - 1]
+            if className in objects: 
+                objectInfo.append([className, confidence])
+                if (draw):
+                    cv2.rectangle(img,box,color=(0,255,0),thickness=2)
+                    cv2.putText(img,classNames[classId-1].upper(), (box[0]+10,box[1]+30), 
+                    cv2.FONT_HERSHEY_COMPLEX,1,(0,255,0),2)
+                    cv2.putText(img,str(round(confidence*100,2)), (box[0]+200,box[1]+30),
+                    cv2.FONT_HERSHEY_COMPLEX,1,(0,255,0),2)
+    
+    return img,objectInfo
+
 
 class StreamingOutput(object):
     def __init__(self):
@@ -42,20 +84,15 @@ global move_duration
 move_duration = 5
 logging_text = ''
 
+def log(line):
+    print(line)
+    global logging_text
+    logging_text += line + "\n"
 
 # Route to display camera stream
 @app.route('/')
 def index():
     return render_template('index.html')
-
-def gen(camera):
-    while True:
-        with output.condition:
-            output.condition.wait()
-            frame = output.frame
-       
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 # Route to stream video
 @app.route('/video_feed')
@@ -196,11 +233,6 @@ def get_data():
     # Return data in JSON format
     return jsonify({'data': data})
 
-def log(line):
-    print(line)
-    global logging_text
-    logging_text += line + "\n"
-
 # move motor forward
 def move_forward():
     GPIO.output(input1, GPIO.HIGH)
@@ -251,6 +283,32 @@ def move_backward(firstInput, secondInput, seconds = -1):
     if seconds > 0:
         time.sleep(seconds)
         stop(firstInput, secondInput)
+
+def gen(camera):
+    while True:
+        with output.condition:
+            output.condition.wait()
+            frame = output.frame
+
+            #image analysis
+            inp = np.asarray(bytearray(frame), dtype=np.uint8)
+            cv_image = cv2.imdecode(inp,cv2.IMREAD_COLOR)
+            result, objectInfo = getObjects(cv_image,0.45,0.2, objects=['person'])
+            if len(objectInfo) != 0:
+                confidence = objectInfo[0][1]
+                log('Person detected')
+                log('Confidence: ' + str( confidence ))
+                if confidence >= 0.65:
+                    fire_sequence()
+
+
+
+            cv2.imwrite('t.jpg', result)
+       
+        #yield (b'--frame\r\n'
+        #       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + open('t.jpg', 'rb').read() + b'\r\n')
 
 if __name__ == '__main__':
     with picamera.PiCamera(resolution='640x480', framerate=24) as camera:
